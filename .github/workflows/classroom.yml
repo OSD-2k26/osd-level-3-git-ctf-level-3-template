@@ -14,11 +14,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Fetch required branches
-        run: |
-          git fetch origin path:path truth:truth
-
-      - name: Verify repo state
+      - name: Verify repo state (only on main)
+        if: github.ref == 'refs/heads/main'
         shell: bash
         run: |
           fail() {
@@ -27,24 +24,24 @@ jobs:
           }
 
           for b in main path truth; do
-            git show-ref --verify --quiet "refs/heads/$b" \
-              || fail "Branch '$b' does not exist"
+            git show-ref --verify --quiet "refs/remotes/origin/$b" \
+              || fail "Remote branch 'origin/$b' does not exist"
           done
 
-          git show "path:path.txt" >/dev/null 2>&1 \
+          git show "origin/path:path.txt" >/dev/null 2>&1 \
             || fail "Branch 'path' does not contain path.txt"
 
-          git show "truth:truth.txt" >/dev/null 2>&1 \
+          git show "origin/truth:truth.txt" >/dev/null 2>&1 \
             || fail "Branch 'truth' does not contain truth.txt"
 
-          git merge-base --is-ancestor path main \
+          git merge-base --is-ancestor origin/path origin/main \
             || fail "'path' has not been merged into 'main'"
 
-          git merge-base --is-ancestor truth main \
+          git merge-base --is-ancestor origin/truth origin/main \
             || fail "'truth' has not been merged into 'main'"
 
-          mb_path=$(git merge-base main path)
-          mb_truth=$(git merge-base main truth)
+          mb_path=$(git merge-base origin/main origin/path)
+          mb_truth=$(git merge-base origin/main origin/truth)
 
           if git merge-base --is-ancestor "$mb_truth" "$mb_path"; then
             fail "'truth' was merged before 'path' (wrong order)"
